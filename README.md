@@ -4,6 +4,7 @@ eTransit – Smart Bus Pass App is a digital solution for managing bus passes th
 link - http://127.0.0.1:5500/index.html
 
 Key Features:
+
 1.Saves Time -
 No more waiting in lines or visiting counters. Users can purchase, renew, and validate bus passes instantly using their mobile phone.
 
