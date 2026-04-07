@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eTransit — Smart Bus Pass</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  
+:root {
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --card: #151d2e;
+  --card2: #1a2540;
+  --accent: #00e5ff;
+  --accent2: #7c3aed;
+  --accent3: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --border: rgba(0,229,255,0.12);
+  --glow: 0 0 20px rgba(0,229,255,0.2);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,229,255,0.06) 0%, transparent 60%);
+  pointer-events:none; z-index:0;
+}
+
+/* ─── LAYOUT ─── */
+.app { display:flex; height:100vh; position:relative; z-index:1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width:240px; background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  padding:0; flex-shrink:0;
+  position:relative; overflow:hidden;
+}
+.sidebar::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+}
+.logo {
+  padding:28px 24px 24px;
+  border-bottom:1px solid var(--border);
+}
+.logo-mark {
+  display:flex; align-items:center; gap:10px;
+}
+.logo-icon {
+  width:36px; height:36px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+}
+.logo-text {
+  font-family:'Space Mono',monospace;
+  font-size:16px; font-weight:700;
+  letter-spacing:1px;
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.logo-sub { font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:2px; }
+
+nav { flex:1; padding:16px 12px; display:flex; flex-direction:column; gap:2px; }
+.nav-section { font-size:10px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; padding:12px 12px 6px; }
+
+.nav-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 12px; border-radius:10px;
+  cursor:pointer; transition:all 0.2s;
+  font-size:14px; color:var(--muted);
+  border:1px solid transparent;
+  position:relative;
+}
+.nav-item:hover { background:var(--card); color:var(--text); }
+.nav-item.active {
+  background:rgba(0,229,255,0.08);
+  color:var(--accent); border-color:var(--border);
+  box-shadow:var(--glow);
+}
+.nav-item.active::before {
+  content:'';
+  position:absolute; left:-12px; top:50%; transform:translateY(-50%);
+  width:3px; height:60%; background:var(--accent);
+  border-radius:0 2px 2px 0;
+}
+.nav-item .icon { font-size:18px; width:20px; text-align:center; }
+.nav-badge {
+  margin-left:auto; background:var(--accent2);
+  color:#fff; font-size:10px; padding:2px 7px;
+  border-radius:99px; font-weight:700;
+}
+
+.sidebar-footer {
+  padding:16px 12px;
+  border-top:1px solid var(--border);
+}
+.user-card {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  background:var(--card); cursor:pointer;
+  transition:all 0.2s;
+}
+.user-card:hover { background:var(--card2); }
+.avatar {
+  width:36px; height:36px; border-radius:50%;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; flex-shrink:0;
+}
+.user-info .name { font-size:13px; font-weight:500; }
+.user-info .role { font-size:11px; color:var(--muted); }
+.user-card .chevron { margin-left:auto; color:var(--muted); font-size:12px; }
+
+/* ─── MAIN ─── */
+.main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 32px; border-bottom:1px solid var(--border);
+  background:rgba(10,14,26,0.8); backdrop-filter:blur(12px);
+  position:sticky; top:0; z-index:10;
+}
+.page-title { font-size:20px; font-weight:700; }
+.page-title span { color:var(--accent); }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+
+.btn {
+  padding:9px 20px; border-radius:8px; font-size:13px;
+  font-weight:600; cursor:pointer; border:none;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-primary {
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  color:#fff; box-shadow:0 4px 15px rgba(0,229,255,0.2);
+}
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,229,255,0.3); }
+.btn-ghost {
+  background:var(--card); color:var(--text);
+  border:1px solid var(--border);
+}
+.btn-ghost:hover { background:var(--card2); }
+.btn-sm { padding:6px 14px; font-size:12px; }
+.btn-danger { background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.3); }
+.btn-success { background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+
+.notif-btn {
+  width:38px; height:38px; border-radius:10px;
+  background:var(--card); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; font-size:16px;
+  transition:all 0.2s;
+}
+.notif-btn:hover { background:var(--card2); }
+.notif-dot {
+  position:absolute; top:7px; right:7px;
+  width:8px; height:8px; background:var(--accent);
+  border-radius:50%; border:2px solid var(--bg);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.7} }
+
+/* ─── PAGES ─── */
+.page { display:none; padding:28px 32px; flex:1; }
+.page.active { display:block; animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ─── DASHBOARD ─── */
+.stats-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px;
+}
+.stat-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:20px; position:relative; overflow:hidden;
+  transition:all 0.3s;
+}
+.stat-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+.stat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+}
+.stat-card:nth-child(1)::before { background:linear-gradient(90deg,var(--accent),transparent); }
+.stat-card:nth-child(2)::before { background:linear-gradient(90deg,var(--accent2),transparent); }
+.stat-card:nth-child(3)::before { background:linear-gradient(90deg,var(--green),transparent); }
+.stat-card:nth-child(4)::before { background:linear-gradient(90deg,var(--accent3),transparent); }
+
+.stat-icon {
+  font-size:24px; width:48px; height:48px;
+  border-radius:12px; display:flex; align-items:center; justify-content:center;
+  margin-bottom:16px;
+}
+.stat-value { font-size:28px; font-weight:700; font-family:'Space Mono',monospace; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); }
+.stat-change {
+  font-size:11px; margin-top:8px; display:flex; align-items:center; gap:4px;
+}
+.stat-change.up { color:var(--green); }
+.stat-change.down { color:var(--red); }
+
+.dashboard-grid {
+  display:grid; grid-template-columns:1.4fr 1fr; gap:20px;
+}
+
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:20px;
+}
+.card-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:20px;
+}
+.card-title { font-size:14px; font-weight:600; }
+.card-badge {
+  font-size:11px; padding:3px 10px; border-radius:99px;
+  background:rgba(0,229,255,0.1); color:var(--accent);
+}
+
+/* Trip list */
+.trip-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:1px solid var(--border);
+}
+.trip-item:last-child { border-bottom:none; }
+.trip-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+}
+.trip-dot.success { background:var(--green); box-shadow:0 0 8px rgba(16,185,129,0.5); }
+.trip-dot.pending { background:var(--accent3); box-shadow:0 0 8px rgba(245,158,11,0.5); }
+.trip-dot.failed  { background:var(--red); }
+.trip-info { flex:1; }
+.trip-route { font-size:13px; font-weight:500; }
+.trip-time  { font-size:11px; color:var(--muted); margin-top:2px; }
+.trip-fare  { font-size:13px; font-weight:700; font-family:'Space Mono',monospace; }
+
+/* Bus card */
+.bus-pass {
+  background:linear-gradient(135deg,#1a1040,#0d2040);
+  border-radius:20px; padding:24px;
+  border:1px solid rgba(0,229,255,0.2);
+  position:relative; overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.bus-pass::before {
+  content:''; position:absolute;
+  top:-40px; right:-40px; width:160px; height:160px;
+  background:radial-gradient(circle,rgba(0,229,255,0.1),transparent 70%);
+  border-radius:50%;
+}
+.bus-pass::after {
+  content:''; position:absolute;
+  bottom:-30px; left:-30px; width:120px; height:120px;
+  background:radial-gradient(circle,rgba(124,58,237,0.15),transparent 70%);
+  border-radius:50%;
+}
+.pass-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.pass-type { font-size:11px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; }
+.pass-name { font-size:18px; font-weight:700; margin-top:4px; }
+.pass-chip {
+  width:38px; height:28px;
+  background:linear-gradient(135deg,#c9a84c,#f5d98b);
+  border-radius:6px; position:relative; overflow:hidden;
+}
+.pass-chip::after {
+  content:''; position:absolute; inset:4px;
+  border:1px solid rgba(0,0,0,0.2); border-radius:3px;
+}
+.pass-number {
+  font-family:'Space Mono',monospace; font-size:14px;
+  letter-spacing:3px; color:rgba(255,255,255,0.7);
+  margin-bottom:16px;
+}
+.pass-footer { display:flex; justify-content:space-between; align-items:flex-end; }
+.pass-balance { }
+.balance-label { font-size:10px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.balance-amount {
+  font-size:28px; font-weight:700;
+  font-family:'Space Mono',monospace;
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.pass-validity { text-align:right; }
+.validity-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.validity-date { font-size:13px; font-weight:600; }
+.pass-nfc {
+  position:absolute; top:16px; right:16px;
+  width:36px; height:36px;
+  background:rgba(0,229,255,0.1); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+  animation:pulse 3s infinite;
+}
+
+/* ─── ROUTES ─── */
+.search-bar {
+  display:flex; gap:12px; margin-bottom:24px;
+}
+.search-input {
+  flex:1; background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:12px 16px;
+  color:var(--text); font-size:14px; font-family:'DM Sans',sans-serif;
+  outline:none; transition:all 0.2s;
+}
+.search-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,229,255,0.1); }
+.search-input::placeholder { color:var(--muted); }
+
+select.search-input {
+  cursor:pointer;
+}
+select.search-input option { background:var(--card); }
+
+.routes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.route-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:18px; cursor:pointer;
+  transition:all 0.3s; position:relative; overflow:hidden;
+}
+.route-card:hover { transform:translateY(-3px); border-color:var(--accent); box-shadow:var(--glow); }
+.route-number {
+  font-family:'Space Mono',monospace; font-size:24px; font-weight:700;
+  color:var(--accent); margin-bottom:8px;
+}
+.route-name { font-size:13px; font-weight:600; margin-bottom:4px; }
+.route-path { font-size:11px; color:var(--muted); margin-bottom:14px; }
+.route-meta { display:flex; gap:10px; flex-wrap:wrap; }
+.route-tag {
+  font-size:10px; padding:3px 8px; border-radius:6px;
+  background:rgba(0,229,255,0.08); color:var(--accent); font-weight:600;
+}
+.route-tag.green { background:rgba(16,185,129,0.08); color:var(--green); }
+.route-tag.orange { background:rgba(245,158,11,0.08); color:var(--accent3); }
+.route-status {
+  position:absolute; top:16px; right:16px;
+  width:8px; height:8px; border-radius:50%;
+}
+.route-status.active { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.route-status.inactive { background:var(--muted); }
+
+/* ─── PASSES ─── */
+.passes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.pass-option {
+  background:var(--card); border:2px solid var(--border);
+  border-radius:16px; padding:24px; cursor:pointer;
+  transition:all 0.3s; text-align:center;
+}
+.pass-option:hover { border-color:var(--accent); box-shadow:var(--glow); }
+.pass-option.selected { border-color:var(--accent); background:rgba(0,229,255,0.05); }
+.pass-option.popular { position:relative; }
+.popular-badge {
+  position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  color:#fff; font-size:10px; padding:3px 12px;
+  border-radius:99px; font-weight:700; white-space:nowrap;
+}
+.pass-emoji { font-size:36px; margin-bottom:12px; }
+.pass-option-name { font-size:16px; font-weight:700; margin-bottom:6px; }
+.pass-option-price {
+  font-size:28px; font-weight:700; font-family:'Space Mono',monospace;
+  color:var(--accent); margin-bottom:4px;
+}
+.pass-option-price span { font-size:14px; color:var(--muted); font-family:'DM Sans',sans-serif; }
+.pass-option-desc { font-size:12px; color:var(--muted); margin-bottom:16px; }
+.pass-features { list-style:none; text-align:left; margin-bottom:20px; }
+.pass-features li {
+  font-size:12px; color:var(--muted); padding:4px 0;
+  display:flex; align-items:center; gap:6px;
+}
+.pass-features li::before { content:'✓'; color:var(--green); font-weight:700; }
+
+/* ─── HISTORY ─── */
+.history-filters {
+  display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;
+}
+.filter-btn {
+  padding:7px 16px; border-radius:99px; font-size:12px;
+  font-weight:600; cursor:pointer; border:1px solid var(--border);
+  background:var(--card); color:var(--muted); transition:all 0.2s;
+  font-family:'DM Sans',sans-serif;
+}
+.filter-btn:hover { color:var(--text); }
+.filter-btn.active { background:rgba(0,229,255,0.1); color:var(--accent); border-color:var(--accent); }
+
+.history-table { width:100%; border-collapse:collapse; }
+.history-table th {
+  text-align:left; padding:12px 16px; font-size:11px;
+  color:var(--muted); text-transform:uppercase; letter-spacing:1px;
+  border-bottom:1px solid var(--border);
+}
+.history-table td {
+  padding:14px 16px; font-size:13px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.history-table tr:hover td { background:rgba(255,255,255,0.02); }
+.status-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:99px; font-size:11px; font-weight:600;
+}
+.status-badge.success { background:rgba(16,185,129,0.1); color:var(--green); }
+.status-badge.pending { background:rgba(245,158,11,0.1); color:var(--accent3); }
+.status-badge.failed  { background:rgba(239,68,68,0.1); color:var(--red); }
+.status-badge::before {
+  content:''; width:6px; height:6px; border-radius:50%;
+}
+.status-badge.success::before { background:var(--green); }
+.status-badge.pending::before { background:var(--accent3); }
+.status-badge.failed::before  { background:var(--red); }
+
+/* ─── TOPUP ─── */
+.topup-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; max-width:800px; }
+.topup-amounts { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.amount-btn {
+  padding:14px; border-radius:10px; font-size:14px; font-weight:700;
+  font-family:'Space Mono',monospace;
+  background:var(--card2); border:1px solid var(--border);
+  color:var(--text); cursor:pointer; transition:all 0.2s;
+}
+.amount-btn:hover, .amount-btn.selected {
+  border-color:var(--accent); color:var(--accent);
+  background:rgba(0,229,255,0.05);
+}
+.custom-amount {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px; margin-bottom:20px;
+  display:flex; align-items:center; gap:8px;
+}
+.custom-amount-prefix { color:var(--accent); font-size:18px; font-weight:700; font-family:'Space Mono',monospace; }
+.custom-amount input {
+  flex:1; background:none; border:none; outline:none;
+  color:var(--text); font-size:18px; font-weight:700;
+  font-family:'Space Mono',monospace;
+}
+
+.payment-method {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:16px 20px;
+  display:flex; align-items:center; gap:12px;
+  cursor:pointer; margin-bottom:10px; transition:all 0.2s;
+}
+.payment-method:hover { border-color:var(--accent); }
+.payment-method.selected { border-color:var(--accent); background:rgba(0,229,255,0.04); }
+.payment-method input[type=radio] { accent-color:var(--accent); }
+.payment-icon { font-size:24px; }
+.payment-name { font-size:13px; font-weight:600; }
+.payment-detail { font-size:11px; color:var(--muted); }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(4px); z-index:100;
+  display:none; align-items:center; justify-content:center;
+}
+.modal-overlay.active { display:flex; animation:fadeIn 0.2s; }
+.modal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; padding:28px; width:460px; max-width:90vw;
+  position:relative;
+}
+.modal-close {
+  position:absolute; top:16px; right:16px;
+  width:30px; height:30px; border-radius:50%;
+  background:var(--card); border:none; color:var(--muted);
+  cursor:pointer; font-size:16px; display:flex;
+  align-items:center; justify-content:center; transition:all 0.2s;
+}
+.modal-close:hover { background:var(--card2); color:var(--text); }
+.modal-title { font-size:18px; font-weight:700; margin-bottom:4px; }
+.modal-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+
+.form-group { margin-bottom:16px; }
+.form-label { font-size:12px; color:var(--muted); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:1px; }
+.form-input {
+  width:100%; background:var(--card); border:1px solid var(--border);
+  border-radius:10px; padding:12px 16px; color:var(--text);
+  font-size:14px; font-family:'DM Sans',sans-serif; outline:none;
+  transition:all 0.2s;
+}
+.form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,229,255,0.1); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* ─── TOAST ─── */
+.toasts {
+  position:fixed; bottom:24px; right:24px;
+  z-index:999; display:flex; flex-direction:column; gap:10px;
+}
+.toast {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:14px 18px;
+  display:flex; align-items:center; gap:10px;
+  min-width:280px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+.toast.success { border-left:3px solid var(--green); }
+.toast.error   { border-left:3px solid var(--red); }
+.toast.info    { border-left:3px solid var(--accent); }
+.toast-icon { font-size:18px; }
+.toast-text { font-size:13px; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ═══════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════ */
+#authScreen {
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:stretch;
+  background:var(--bg);
+  transition:opacity 0.5s ease, transform 0.5s ease;
+}
+#authScreen.hide {
+  opacity:0; pointer-events:none; transform:scale(1.03);
+}
+
+/* Left decorative panel */
+.auth-panel {
+  flex:1; position:relative; overflow:hidden;
+  background:linear-gradient(155deg,#0d0a1f 0%,#0a1428 50%,#07101e 100%);
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center; padding:48px;
+}
+.auth-panel::before {
+  content:''; position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 70% 60% at 30% 20%, rgba(124,58,237,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 50% at 75% 80%, rgba(0,229,255,0.12) 0%, transparent 60%);
+}
+.auth-panel-grid {
+  position:absolute; inset:0; opacity:0.04;
+  background-image:
+    linear-gradient(rgba(0,229,255,1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,1) 1px, transparent 1px);
+  background-size:48px 48px;
+}
+.auth-panel-content { position:relative; z-index:1; text-align:center; max-width:380px; }
+.auth-logo-big {
+  width:80px; height:80px;
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-radius:24px; font-size:40px;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 24px; box-shadow:0 0 40px rgba(0,229,255,0.25);
+  animation:floatAnim 3s ease-in-out infinite;
+}
+@keyframes floatAnim {
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-10px) rotate(2deg)}
+}
+.auth-brand {
+  font-family:'Space Mono',monospace; font-size:32px; font-weight:700;
+  background:linear-gradient(135deg,var(--accent),#a78bfa);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  letter-spacing:2px; margin-bottom:8px;
+}
+.auth-tagline { font-size:15px; color:var(--muted); line-height:1.6; margin-bottom:40px; }
+
+/* Features list */
+.auth-features { display:flex; flex-direction:column; gap:16px; text-align:left; }
+.auth-feature {
+  display:flex; align-items:center; gap:16px;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  border-radius:14px; padding:14px 18px;
+  backdrop-filter:blur(8px);
+  animation:slideRight 0.6s ease both;
+}
+.auth-feature:nth-child(2){animation-delay:0.1s}
+.auth-feature:nth-child(3){animation-delay:0.2s}
+.auth-feature:nth-child(4){animation-delay:0.3s}
+@keyframes slideRight{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+.af-icon {
+  width:40px; height:40px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+}
+.af-title { font-size:13px; font-weight:600; margin-bottom:2px; }
+.af-desc  { font-size:11px; color:var(--muted); }
+
+/* Floating bus animation */
+.bus-track {
+  position:absolute; bottom:40px; left:0; right:0;
+  height:3px; background:linear-gradient(90deg,transparent,rgba(0,229,255,0.2),transparent);
+}
+.bus-anim {
+  position:absolute; bottom:44px; font-size:28px;
+  animation:busRide 8s linear infinite;
+}
+@keyframes busRide{from{left:-60px}to{left:calc(100% + 60px)}}
+
+/* Right form panel */
+.auth-form-panel {
+  width:480px; flex-shrink:0;
+  background:var(--surface); border-left:1px solid var(--border);
+  display:flex; flex-direction:column; justify-content:center;
+  padding:48px 40px; position:relative; overflow:hidden;
+}
+.auth-form-panel::before {
+  content:''; position:absolute; top:-80px; right:-80px;
+  width:200px; height:200px;
+  background:radial-gradient(circle,rgba(0,229,255,0.06),transparent 70%);
+  border-radius:50%;
+}
+
+/* Tab switcher */
+.auth-tabs {
+  display:flex; background:var(--card); border-radius:12px; padding:4px;
+  margin-bottom:32px; gap:4px;
+}
+.auth-tab {
+  flex:1; padding:10px; border-radius:9px; text-align:center;
+  font-size:14px; font-weight:600; cursor:pointer;
+  transition:all 0.25s; color:var(--muted); border:none; background:none;
+  font-family:'DM Sans',sans-serif;
+}
+.auth-tab.active {
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  color:#fff; box-shadow:0 4px 12px rgba(0,229,255,0.2);
+}
+
+.auth-form { display:none; animation:fadeIn 0.3s ease; }
+.auth-form.active { display:block; }
+
+.auth-title { font-size:24px; font-weight:700; margin-bottom:6px; }
+.auth-subtitle { font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+/* Input with icon */
+.input-group { position:relative; margin-bottom:16px; }
+.input-icon {
+  position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  font-size:17px; pointer-events:none; z-index:1;
+}
+.input-group .form-input { padding-left:44px; }
+.input-group .toggle-pass {
+  position:absolute; right:14px; top:50%; transform:translateY(-50%);
+  background:none; border:none; color:var(--muted); cursor:pointer;
+  font-size:16px; padding:4px;
+}
+
+/* Password strength */
+.strength-bar { display:flex; gap:4px; margin-top:8px; margin-bottom:4px; }
+.strength-seg {
+  flex:1; height:3px; border-radius:99px; background:var(--card2);
+  transition:background 0.3s;
+}
+.strength-label { font-size:11px; color:var(--muted); }
+
+/* Terms */
+.auth-check {
+  display:flex; align-items:flex-start; gap:10px;
+  margin-bottom:20px; font-size:12px; color:var(--muted); cursor:pointer;
+}
+.auth-check input { accent-color:var(--accent); margin-top:2px; flex-shrink:0; }
+.auth-check a { color:var(--accent); text-decoration:none; }
+
+/* Social divider */
+.or-divider {
+  display:flex; align-items:center; gap:12px;
+  margin:20px 0; color:var(--muted); font-size:12px;
+}
+.or-divider::before,.or-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+
+/* Social buttons */
+.social-btns { display:flex; gap:10px; }
+.social-btn {
+  flex:1; padding:11px; border-radius:10px;
+  background:var(--card); border:1px solid var(--border);
+  color:var(--text); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all 0.2s; font-family:'DM Sans',sans-serif;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.social-btn:hover { background:var(--card2); border-color:var(--accent); }
+
+/* OTP step */
+.otp-boxes {
+  display:flex; gap:10px; justify-content:center; margin:24px 0;
+}
+.otp-box {
+  width:52px; height:60px; text-align:center; font-size:24px;
+  font-family:'Space Mono',monospace; font-weight:700;
+  background:var(--card); border:2px solid var(--border);
+  border-radius:12px; color:var(--accent); outline:none;
+  transition:all 0.2s; caret-color:var(--accent);
+}
+.otp-box:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,229,255,0.12); }
+
+/* Step indicator */
+.steps {
+  display:flex; align-items:center; gap:0; margin-bottom:28px;
+}
+.step-dot {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--card); border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:var(--muted);
+  transition:all 0.3s; flex-shrink:0;
+}
+.step-dot.active { background:var(--accent); border-color:var(--accent); color:#000; }
+.step-dot.done   { background:var(--green);  border-color:var(--green);  color:#fff; }
+.step-line {
+  flex:1; height:2px; background:var(--border); transition:background 0.3s;
+}
+.step-line.done { background:var(--green); }
+
+/* Back button */
+.back-btn {
+  background:none; border:none; color:var(--muted);
+  font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;
+  margin-bottom:20px; font-family:'DM Sans',sans-serif;
+  transition:color 0.2s; padding:0;
+}
+.back-btn:hover { color:var(--text); }
+
+/* Resend timer */
+.resend-row { text-align:center; margin-top:12px; font-size:13px; color:var(--muted); }
+.resend-link { color:var(--accent); cursor:pointer; background:none; border:none; font-family:'DM Sans',sans-serif; font-size:13px; }
+.resend-link:disabled { color:var(--muted); cursor:not-allowed; }
+
+/* Success screen */
+.auth-success { text-align:center; padding:20px 0; }
+.success-icon {
+  width:80px; height:80px; border-radius:50%;
+  background:rgba(16,185,129,0.1); border:2px solid var(--green);
+  display:flex; align-items:center; justify-content:center;
+  font-size:36px; margin:0 auto 20px;
+  animation:popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.success-title { font-size:22px; font-weight:700; margin-bottom:8px; color:var(--green); }
+.success-sub   { font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+/* Pass number chip */
+.pass-chip-display {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:14px 20px; margin-bottom:24px;
+  font-family:'Space Mono',monospace; font-size:14px;
+  letter-spacing:2px; color:var(--accent); text-align:center;
+}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px) {
+  .auth-panel { display:none; }
+  .auth-form-panel { width:100%; padding:32px 24px; }
+}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px) {
+  .sidebar { width:64px; }
+  .sidebar .logo-text, .sidebar .logo-sub, .nav-item span, .nav-badge, .user-info, .user-card .chevron { display:none; }
+  .logo-mark { justify-content:center; }
+  .nav-item { justify-content:center; padding:12px; }
+  .nav-item .icon { width:auto; }
+  .nav-item.active::before { display:none; }
+  .user-card { justify-content:center; }
+  .stats-grid { grid-template-columns:repeat(2,1fr); }
+  .dashboard-grid { grid-template-columns:1fr; }
+  .routes-grid, .passes-grid { grid-template-columns:1fr 1fr; }
+  .topup-grid { grid-template-columns:1fr; }
+  .page { padding:20px 16px; }
+  .topbar { padding:16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════════════ -->
+<div id="authScreen">
+
+  <!-- Left decorative panel -->
+  <div class="auth-panel">
+    <div class="auth-panel-grid"></div>
+    <div class="auth-panel-content">
+      <div class="auth-logo-big">🚌</div>
+      <div class="auth-brand">eTRANSIT</div>
+      <div class="auth-tagline">Your smart digital bus pass. Tap, ride, and go — no paper, no queues, no hassle.</div>
+
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="af-icon" style="background:rgba(0,229,255,0.1)">💳</div>
+          <div>
+            <div class="af-title">Digital Smart Pass</div>
+            <div class="af-desc">NFC & QR enabled — just tap and board</div>
+          </div>
+        </div>
+        <div class="auth-feature">
+          <div class="af-icon" style="background:rgba(16,185,129,0.1)">⚡</div>
+          <div>
+            <div class="af-title">Instant Top-Up</div>
+            <div class="af-desc">UPI, Card, Wallet — recharge in seconds</div>
+          </div>
+        </div>
+        <div class="auth-feature">
+          <div class="af-icon" style="background:rgba(124,58,237,0.1)">🗺️</div>
+          <div>
+            <div class="af-title">Live Bus Tracking</div>
+            <div class="af-desc">Real-time arrivals & route information</div>
+          </div>
+        </div>
+        <div class="auth-feature">
+          <div class="af-icon" style="background:rgba(245,158,11,0.1)">⭐</div>
+          <div>
+            <div class="af-title">Loyalty Rewards</div>
+            <div class="af-desc">Earn points on every ride, redeem for discounts</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Animated bus -->
+    <div class="bus-track"></div>
+    <div class="bus-anim">🚌</div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-form-panel">
+
+    <!-- Tab switcher -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Create Account</button>
+    </div>
+
+    <!-- ─── LOGIN FORM ─── -->
+    <div class="auth-form active" id="formLogin">
+      <div class="auth-title">Welcome back 👋</div>
+      <div class="auth-subtitle">Sign in to access your eTransit pass</div>
+
+      <div class="input-group">
+        <span class="input-icon">📧</span>
+        <input class="form-input" id="loginEmail" type="email" placeholder="Email address" autocomplete="email">
+      </div>
+      <div class="input-group">
+        <span class="input-icon">🔒</span>
+        <input class="form-input" id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+        <button class="toggle-pass" type="button" onclick="togglePass('loginPassword',this)">👁️</button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--muted);">
+          <input type="checkbox" style="accent-color:var(--accent)"> Remember me
+        </label>
+        <span style="font-size:13px;color:var(--accent);cursor:pointer;" onclick="showForgot()">Forgot password?</span>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:15px;" onclick="doLogin()">
+        Sign In →
+      </button>
+
+      <div class="or-divider">or continue with</div>
+      <div class="social-btns">
+        <button class="social-btn" onclick="socialLogin('Google')">
+          <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/><path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/><path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/><path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.237 5.335l4.04-3.067Z"/></svg>
+          Google
+        </button>
+        <button class="social-btn" onclick="socialLogin('Phone')">📱 OTP Login</button>
+      </div>
+
+      <div style="text-align:center;margin-top:24px;font-size:13px;color:var(--muted);">
+        Don't have an account? <span style="color:var(--accent);cursor:pointer;" onclick="switchTab('register')">Sign up free</span>
+      </div>
+    </div>
+
+    <!-- ─── REGISTER FORM (3 steps) ─── -->
+    <div class="auth-form" id="formRegister">
+
+      <!-- Step indicator -->
+      <div class="steps" id="regSteps">
+        <div class="step-dot active" id="sDot1">1</div>
+        <div class="step-line" id="sLine1"></div>
+        <div class="step-dot" id="sDot2">2</div>
+        <div class="step-line" id="sLine2"></div>
+        <div class="step-dot" id="sDot3">3</div>
+      </div>
+
+      <!-- Step 1: Personal Info -->
+      <div id="regStep1">
+        <div class="auth-title">Create account 🚀</div>
+        <div class="auth-subtitle">Step 1 of 3 — Personal information</div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="input-group" style="margin-bottom:0">
+            <span class="input-icon">👤</span>
+            <input class="form-input" id="regFirstName" placeholder="First name">
+          </div>
+          <div class="input-group" style="margin-bottom:0">
+            <span class="input-icon" style="left:14px;top:50%;transform:translateY(-50%)">👤</span>
+            <input class="form-input" id="regLastName" placeholder="Last name" style="padding-left:44px">
+          </div>
+        </div>
+        <div style="margin-bottom:16px;"></div>
+
+        <div class="input-group">
+          <span class="input-icon">📧</span>
+          <input class="form-input" id="regEmail" type="email" placeholder="Email address">
+        </div>
+        <div class="input-group">
+          <span class="input-icon">📱</span>
+          <input class="form-input" id="regPhone" type="tel" placeholder="Phone number (+91 XXXXX XXXXX)">
+        </div>
+        <div class="input-group">
+          <span class="input-icon">📅</span>
+          <input class="form-input" id="regDob" type="date" placeholder="Date of birth">
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;" onclick="nextRegStep(2)">
+          Continue →
+        </button>
+      </div>
+
+      <!-- Step 2: Secure Password -->
+      <div id="regStep2" style="display:none;">
+        <button class="back-btn" onclick="nextRegStep(1)">← Back</button>
+        <div class="auth-title">Secure your account 🔐</div>
+        <div class="auth-subtitle">Step 2 of 3 — Create a strong password</div>
+
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input class="form-input" id="regPassword" type="password" placeholder="Create password" oninput="checkStrength(this.value)">
+          <button class="toggle-pass" type="button" onclick="togglePass('regPassword',this)">👁️</button>
+        </div>
+        <div class="strength-bar" id="strengthBar">
+          <div class="strength-seg" id="seg1"></div>
+          <div class="strength-seg" id="seg2"></div>
+          <div class="strength-seg" id="seg3"></div>
+          <div class="strength-seg" id="seg4"></div>
+        </div>
+        <div class="strength-label" id="strengthLabel">Enter a password</div>
+        <div style="margin-bottom:16px;"></div>
+
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input class="form-input" id="regConfirmPassword" type="password" placeholder="Confirm password">
+          <button class="toggle-pass" type="button" onclick="togglePass('regConfirmPassword',this)">👁️</button>
+        </div>
+
+        <div class="input-group">
+          <span class="input-icon">📌</span>
+          <input class="form-input" id="regPin" type="password" maxlength="6" placeholder="Set 6-digit pass PIN" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;" onclick="nextRegStep(3)">
+          Continue →
+        </button>
+      </div>
+
+      <!-- Step 3: Pass Type + OTP -->
+      <div id="regStep3" style="display:none;">
+        <button class="back-btn" onclick="nextRegStep(2)">← Back</button>
+        <div class="auth-title">Choose your pass 🎫</div>
+        <div class="auth-subtitle">Step 3 of 3 — Select pass type & verify phone</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+          <div class="pass-option" onclick="selectRegPass(this,'Daily',40)" style="padding:14px;text-align:center">
+            <div style="font-size:24px;margin-bottom:6px">🎫</div>
+            <div style="font-size:13px;font-weight:700">Daily</div>
+            <div style="font-size:16px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">₹40</div>
+          </div>
+          <div class="pass-option selected" onclick="selectRegPass(this,'Monthly',699)" style="padding:14px;text-align:center">
+            <div style="font-size:24px;margin-bottom:6px">💎</div>
+            <div style="font-size:13px;font-weight:700">Monthly</div>
+            <div style="font-size:16px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">₹699</div>
+          </div>
+          <div class="pass-option" onclick="selectRegPass(this,'Weekly',200)" style="padding:14px;text-align:center">
+            <div style="font-size:24px;margin-bottom:6px">📅</div>
+            <div style="font-size:13px;font-weight:700">Weekly</div>
+            <div style="font-size:16px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">₹200</div>
+          </div>
+          <div class="pass-option" onclick="selectRegPass(this,'Annual',6999)" style="padding:14px;text-align:center">
+            <div style="font-size:24px;margin-bottom:6px">🏆</div>
+            <div style="font-size:13px;font-weight:700">Annual</div>
+            <div style="font-size:16px;font-weight:700;color:var(--accent);font-family:'Space Mono',monospace">₹6999</div>
+          </div>
+        </div>
+
+        <label class="auth-check">
+          <input type="checkbox" id="regTerms">
+          I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+        </label>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;" onclick="sendOtp()">
+          📲 Send Verification OTP
+        </button>
+      </div>
+
+      <!-- Step 3b: OTP verification -->
+      <div id="regStepOtp" style="display:none;">
+        <button class="back-btn" onclick="backToStep3()">← Back</button>
+        <div class="auth-title">Verify phone 📲</div>
+        <div class="auth-subtitle" id="otpSubtitle">OTP sent to your phone number</div>
+
+        <div class="otp-boxes">
+          <input class="otp-box" maxlength="1" id="otp1" oninput="otpMove(this,null,'otp2')" onkeydown="otpBack(event,null,'otp1')">
+          <input class="otp-box" maxlength="1" id="otp2" oninput="otpMove(this,'otp1','otp3')" onkeydown="otpBack(event,'otp1','otp2')">
+          <input class="otp-box" maxlength="1" id="otp3" oninput="otpMove(this,'otp2','otp4')" onkeydown="otpBack(event,'otp2','otp3')">
+          <input class="otp-box" maxlength="1" id="otp4" oninput="otpMove(this,'otp3','otp5')" onkeydown="otpBack(event,'otp3','otp4')">
+          <input class="otp-box" maxlength="1" id="otp5" oninput="otpMove(this,'otp4','otp6')" onkeydown="otpBack(event,'otp4','otp5')">
+          <input class="otp-box" maxlength="1" id="otp6" oninput="otpMove(this,'otp5',null)"  onkeydown="otpBack(event,'otp5','otp6')">
+        </div>
+
+        <div class="resend-row">
+          Didn't receive?
+          <button class="resend-link" id="resendBtn" onclick="resendOtp()" disabled>
+            Resend in <span id="resendTimer">30</span>s
+          </button>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;margin-top:24px;" onclick="verifyOtp()">
+          ✅ Verify & Create Account
+        </button>
+      </div>
+
+      <!-- Success -->
+      <div id="regStepSuccess" style="display:none;">
+        <div class="auth-success">
+          <div class="success-icon">🎉</div>
+          <div class="success-title">Account Created!</div>
+          <div class="success-sub">Welcome to eTransit! Your smart bus pass is ready.</div>
+          <div class="pass-chip-display" id="newPassNumber">Generating pass...</div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;" onclick="enterApp()">
+            🚌 Start Riding →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── FORGOT PASSWORD ─── -->
+    <div class="auth-form" id="formForgot">
+      <button class="back-btn" onclick="switchTab('login')">← Back to login</button>
+      <div class="auth-title">Reset password 🔑</div>
+      <div class="auth-subtitle">Enter your email to receive a reset link</div>
+
+      <div class="input-group">
+        <span class="input-icon">📧</span>
+        <input class="form-input" id="forgotEmail" type="email" placeholder="Your registered email">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;" onclick="sendReset()">
+        📨 Send Reset Link
+      </button>
+    </div>
+
+  </div><!-- /.auth-form-panel -->
+</div><!-- /#authScreen -->
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">🚌</div>
+        <div>
+          <div class="logo-text">eTRANSIT</div>
+          <div class="logo-sub">Smart Bus Pass</div>
+        </div>
+      </div>
+    </div>
+
+    <nav>
+      <div class="nav-section">Main</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="icon">📊</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="pass">
+        <span class="icon">💳</span>
+        <span>My Pass</span>
+      </div>
+      <div class="nav-item" data-page="routes">
+        <span class="icon">🗺️</span>
+        <span>Routes</span>
+      </div>
+      <div class="nav-section">Account</div>
+      <div class="nav-item" data-page="history">
+        <span class="icon">🕐</span>
+        <span>Trip History</span>
+        <div class="nav-badge">5</div>
+      </div>
+      <div class="nav-item" data-page="topup">
+        <span class="icon">💰</span>
+        <span>Top Up</span>
+      </div>
+      <div class="nav-item" data-page="settings">
+        <span class="icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">AS</div>
+        <div class="user-info">
+          <div class="name">Apoorva Sharma</div>
+          <div class="role">Premium Pass</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard <span>Overview</span></div>
+      <div class="topbar-right">
+        <div class="notif-btn" onclick="showToast('2 new alerts: Bus 42 delayed','info')">
+          🔔<div class="notif-dot"></div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('topupModal')">+ Top Up Balance</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(0,229,255,0.1)">💳</div>
+          <div class="stat-value" style="color:var(--accent)">₹847.50</div>
+          <div class="stat-label">Current Balance</div>
+          <div class="stat-change up">↑ Topped up ₹200 today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(124,58,237,0.1)">🚌</div>
+          <div class="stat-value" style="color:#a78bfa">47</div>
+          <div class="stat-label">Trips This Month</div>
+          <div class="stat-change up">↑ +8 vs last month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(16,185,129,0.1)">💸</div>
+          <div class="stat-value" style="color:var(--green)">₹1,230</div>
+          <div class="stat-label">Total Spent (Month)</div>
+          <div class="stat-change down">↓ -₹80 vs last month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(245,158,11,0.1)">⭐</div>
+          <div class="stat-value" style="color:var(--accent3)">Gold</div>
+          <div class="stat-label">Pass Tier</div>
+          <div class="stat-change up">↑ 2,340 pts earned</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Trips</span>
+            <span class="card-badge">Today</span>
+          </div>
+          <div id="recentTrips">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Pass Card -->
+          <div class="bus-pass">
+            <div class="pass-nfc">📶</div>
+            <div class="pass-header">
+              <div>
+                <div class="pass-type">Monthly Pass • Gold</div>
+                <div class="pass-name">Apoorva Sharma</div>
+              </div>
+              <div class="pass-chip"></div>
+            </div>
+            <div class="pass-number">4217 •••• •••• 8891</div>
+            <div class="pass-footer">
+              <div class="pass-balance">
+                <div class="balance-label">Balance</div>
+                <div class="balance-amount" id="dashBalance">₹847.50</div>
+              </div>
+              <div class="pass-validity">
+                <div class="validity-label">Valid Until</div>
+                <div class="validity-date">Mar 31, 2026</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Next Bus -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🚏 Next Bus</span>
+              <span class="card-badge" style="color:var(--green);background:rgba(16,185,129,0.1)">Live</span>
+            </div>
+            <div id="nextBusInfo">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div>
+                  <div style="font-size:22px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent)">Bus 42</div>
+                  <div style="font-size:12px;color:var(--muted)">Sector 17 → ISBT</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:28px;font-weight:700;color:var(--accent3);font-family:'Space Mono',monospace" id="countdown">4:32</div>
+                  <div style="font-size:11px;color:var(--muted)">minutes away</div>
+                </div>
+              </div>
+              <div style="background:var(--card2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);">
+                🟡 Platform 3 · AC · 12 seats available
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY PASS PAGE -->
+    <div class="page" id="page-pass">
+      <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:24px;max-width:900px;">
+        <div>
+          <div class="bus-pass" style="margin-bottom:16px;">
+            <div class="pass-nfc">📶</div>
+            <div class="pass-header">
+              <div>
+                <div class="pass-type">Monthly Pass • Gold</div>
+                <div class="pass-name">Apoorva Sharma</div>
+              </div>
+              <div class="pass-chip"></div>
+            </div>
+            <div class="pass-number">4217 •••• •••• 8891</div>
+            <div class="pass-footer">
+              <div class="pass-balance">
+                <div class="balance-label">Balance</div>
+                <div class="balance-amount">₹847.50</div>
+              </div>
+              <div class="pass-validity">
+                <div class="validity-label">Valid Until</div>
+                <div class="validity-date">Mar 31, 2026</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px;" onclick="openModal('topupModal')">💰 Top Up Balance</button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="showToast('QR Code shown on device','info')">📱 Show QR Code</button>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><span class="card-title">Pass Details</span></div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);">
+                <span style="font-size:13px;color:var(--muted)">Pass Type</span>
+                <span style="font-size:13px;font-weight:600">Monthly — Gold</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);">
+                <span style="font-size:13px;color:var(--muted)">Issue Date</span>
+                <span style="font-size:13px;font-weight:600">Mar 1, 2026</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);">
+                <span style="font-size:13px;color:var(--muted)">Expiry Date</span>
+                <span style="font-size:13px;font-weight:600;color:var(--green)">Mar 31, 2026</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);">
+                <span style="font-size:13px;color:var(--muted)">Trips Used</span>
+                <span style="font-size:13px;font-weight:600">47 / Unlimited</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="font-size:13px;color:var(--muted)">Loyalty Points</span>
+                <span style="font-size:13px;font-weight:600;color:var(--accent3)">2,340 pts ⭐</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Upgrade Plan</span></div>
+            <div class="passes-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="pass-option" onclick="selectPass(this,'daily')">
+                <div class="pass-emoji">🎫</div>
+                <div class="pass-option-name">Daily</div>
+                <div class="pass-option-price">₹40<span>/day</span></div>
+                <div class="pass-option-desc">24-hr unlimited</div>
+                <button class="btn btn-ghost btn-sm" style="width:100%">Select</button>
+              </div>
+              <div class="pass-option popular" onclick="selectPass(this,'monthly')">
+                <div class="popular-badge">⚡ Popular</div>
+                <div class="pass-emoji">💎</div>
+                <div class="pass-option-name">Monthly</div>
+                <div class="pass-option-price">₹699<span>/mo</span></div>
+                <div class="pass-option-desc">Unlimited rides</div>
+                <button class="btn btn-primary btn-sm" style="width:100%">Select</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROUTES PAGE -->
+    <div class="page" id="page-routes">
+      <div class="search-bar">
+        <input class="search-input" placeholder="🔍 Search routes, stops..." oninput="filterRoutes(this.value)" style="flex:2">
+        <select class="search-input" onchange="filterByStatus(this.value)" style="flex:1;max-width:160px;">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="routes-grid" id="routesGrid"></div>
+    </div>
+
+    <!-- TRIP HISTORY PAGE -->
+    <div class="page" id="page-history">
+      <div class="history-filters">
+        <button class="filter-btn active" onclick="filterHistory('all',this)">All Trips</button>
+        <button class="filter-btn" onclick="filterHistory('completed',this)">Completed</button>
+        <button class="filter-btn" onclick="filterHistory('pending',this)">Pending</button>
+        <button class="filter-btn" onclick="filterHistory('failed',this)">Failed</button>
+        <button class="filter-btn" style="margin-left:auto;" onclick="showToast('CSV exported','success')">📥 Export</button>
+      </div>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <table class="history-table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Trip ID</th>
+              <th>Route</th>
+              <th>From → To</th>
+              <th>Date &amp; Time</th>
+              <th>Fare</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TOP UP PAGE -->
+    <div class="page" id="page-topup">
+      <div class="topup-grid">
+        <div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Select Amount</span></div>
+            <div class="topup-amounts" id="topupAmounts">
+              <button class="amount-btn" onclick="selectAmount(100,this)">₹100</button>
+              <button class="amount-btn" onclick="selectAmount(200,this)">₹200</button>
+              <button class="amount-btn" onclick="selectAmount(500,this)">₹500</button>
+              <button class="amount-btn" onclick="selectAmount(1000,this)">₹1000</button>
+              <button class="amount-btn" onclick="selectAmount(2000,this)">₹2000</button>
+              <button class="amount-btn" onclick="selectAmount(5000,this)">₹5000</button>
+            </div>
+            <div class="custom-amount">
+              <span class="custom-amount-prefix">₹</span>
+              <input type="number" id="customAmount" placeholder="Enter custom amount" oninput="updateCustom(this.value)">
+            </div>
+            <div style="background:rgba(0,229,255,0.06);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Amount to add</div>
+              <div style="font-size:24px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent)" id="selectedAmount">₹0</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Payment Method</span></div>
+            <div onclick="selectPayment(this,'upi')" class="payment-method selected" data-method="upi">
+              <input type="radio" name="payment" checked>
+              <span class="payment-icon">📱</span>
+              <div>
+                <div class="payment-name">UPI</div>
+                <div class="payment-detail">PhonePe, GPay, BHIM</div>
+              </div>
+            </div>
+            <div onclick="selectPayment(this,'card')" class="payment-method" data-method="card">
+              <input type="radio" name="payment">
+              <span class="payment-icon">💳</span>
+              <div>
+                <div class="payment-name">Debit/Credit Card</div>
+                <div class="payment-detail">Visa, Mastercard, RuPay</div>
+              </div>
+            </div>
+            <div onclick="selectPayment(this,'netbank')" class="payment-method" data-method="netbank">
+              <input type="radio" name="payment">
+              <span class="payment-icon">🏦</span>
+              <div>
+                <div class="payment-name">Net Banking</div>
+                <div class="payment-detail">All major banks</div>
+              </div>
+            </div>
+            <div onclick="selectPayment(this,'wallet')" class="payment-method" data-method="wallet">
+              <input type="radio" name="payment">
+              <span class="payment-icon">👜</span>
+              <div>
+                <div class="payment-name">Wallet</div>
+                <div class="payment-detail">Paytm, Amazon Pay</div>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:16px;padding:14px;" onclick="processTopup()">
+              ⚡ Proceed to Pay
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="page-settings">
+      <div style="max-width:600px;">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Profile Settings</span></div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" value="Arjun Kumar">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" value="arjun@example.com" type="email">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input class="form-input" value="+91 98765 43210">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showToast('Profile updated successfully','success')">Save Changes</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><span class="card-title">Notifications</span></div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:14px;font-weight:500">Bus Arrival Alerts</div>
+                <div style="font-size:12px;color:var(--muted)">Get notified 5 mins before bus arrives</div>
+              </div>
+              <div class="toggle active" onclick="toggleSwitch(this)" style="width:44px;height:24px;background:var(--accent);border-radius:99px;cursor:pointer;position:relative;transition:all 0.2s;"><div style="position:absolute;top:3px;right:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:all 0.2s;"></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:14px;font-weight:500">Low Balance Alert</div>
+                <div style="font-size:12px;color:var(--muted)">Alert when balance falls below ₹100</div>
+              </div>
+              <div class="toggle active" onclick="toggleSwitch(this)" style="width:44px;height:24px;background:var(--accent);border-radius:99px;cursor:pointer;position:relative;transition:all 0.2s;"><div style="position:absolute;top:3px;right:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:all 0.2s;"></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:14px;font-weight:500">Trip Summary</div>
+                <div style="font-size:12px;color:var(--muted)">Daily trip and spending summary</div>
+              </div>
+              <div class="toggle" onclick="toggleSwitch(this)" style="width:44px;height:24px;background:var(--muted);border-radius:99px;cursor:pointer;position:relative;transition:all 0.2s;"><div style="position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:all 0.2s;"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Security</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-ghost" onclick="showToast('OTP sent to +91 98765 43210','info')">🔑 Change PIN</button>
+            <button class="btn btn-ghost" onclick="showToast('Biometric login enabled','success')">🔓 Enable Biometric Login</button>
+            <button class="btn btn-danger" onclick="showToast('Logged out from all devices','error')">🚪 Logout All Devices</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOPUP MODAL -->
+<div class="modal-overlay" id="topupModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('topupModal')">✕</button>
+    <div class="modal-title">Quick Top Up</div>
+    <div class="modal-sub">Add money to your eTransit pass</div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input class="form-input" type="number" id="modalAmount" placeholder="₹ Enter amount">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Payment Method</label>
+      <select class="form-input">
+        <option>📱 UPI</option>
+        <option>💳 Debit/Credit Card</option>
+        <option>🏦 Net Banking</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;margin-top:8px;" onclick="confirmTopup()">⚡ Confirm Top Up</button>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toasts" id="toastContainer"></div>
+
+<script>
+// ─── APP STATE ───
+const state = {
+  balance: 847.50,
+  selectedAmount: 0,
+  trips: [
+    {id:'TXN001', route:'Bus 42', from:'Sector 17', to:'ISBT', time:'Today, 09:15 AM', fare:26, status:'success'},
+    {id:'TXN002', route:'Bus 18', from:'Railway Station', to:'Sector 35', time:'Today, 07:45 AM', fare:18, status:'success'},
+    {id:'TXN003', route:'Bus 7C', from:'Sector 43', to:'PGI Hospital', time:'Yesterday, 6:10 PM', fare:22, status:'success'},
+    {id:'TXN004', route:'Bus 22', from:'IT Park', to:'Sector 17', time:'Yesterday, 2:30 PM', fare:20, status:'pending'},
+    {id:'TXN005', route:'Bus 42', from:'ISBT', to:'Sector 17', time:'Feb 19, 8:00 AM', fare:26, status:'failed'},
+    {id:'TXN006', route:'Bus 11', from:'Sector 11', to:'Chandigarh Station', time:'Feb 18, 5:45 PM', fare:14, status:'success'},
+    {id:'TXN007', route:'Bus 55', from:'Mohali Chowk', to:'PGI Hospital', time:'Feb 17, 11:20 AM', fare:32, status:'success'},
+    {id:'TXN008', route:'Bus 7C', from:'PGI Hospital', to:'Sector 43', time:'Feb 17, 3:00 PM', fare:22, status:'success'},
+  ],
+  routes: [
+    {num:'42', name:'Central Corridor', path:'Sector 17 → ISBT', freq:'Every 8 min', fare:'₹26', stops:14, status:'active', ac:true},
+    {num:'18', name:'Railway Express', path:'Railway Station → Sector 35', freq:'Every 12 min', fare:'₹18', stops:9, status:'active', ac:false},
+    {num:'7C', name:'Hospital Link', path:'Sector 43 → PGI Hospital', freq:'Every 10 min', fare:'₹22', stops:11, status:'active', ac:true},
+    {num:'22', name:'IT Park Shuttle', path:'IT Park → Sector 17', freq:'Every 15 min', fare:'₹20', stops:8, status:'active', ac:true},
+    {num:'11', name:'City Loop', path:'Sector 11 → Chandigarh Stn', freq:'Every 20 min', fare:'₹14', stops:6, status:'active', ac:false},
+    {num:'55', name:'Mohali Link', path:'Mohali Chowk → PGI', freq:'Every 25 min', fare:'₹32', stops:16, status:'inactive', ac:false},
+    {num:'33', name:'University Line', path:'Panjab Uni → Sector 17', freq:'Every 18 min', fare:'₹16', stops:7, status:'active', ac:false},
+    {num:'99', name:'Airport Express', path:'ISBT → Airport', freq:'Every 30 min', fare:'₹55', stops:5, status:'active', ac:true},
+    {num:'6A', name:'Night Owl', path:'ISBT → Sector 46', freq:'Every 45 min', fare:'₹24', stops:12, status:'inactive', ac:false},
+  ]
+};
+
+// ─── NAVIGATION ───
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const page = item.dataset.page;
+    document.getElementById('page-' + page).classList.add('active');
+    const titles = {
+      dashboard:'Dashboard <span>Overview</span>',
+      pass:'My <span>Pass</span>',
+      routes:'Bus <span>Routes</span>',
+      history:'Trip <span>History</span>',
+      topup:'Top Up <span>Balance</span>',
+      settings:'Account <span>Settings</span>'
+    };
+    document.getElementById('pageTitle').innerHTML = titles[page] || page;
+    if(page === 'routes') renderRoutes(state.routes);
+    if(page === 'history') renderHistory(state.trips);
+  });
+});
+
+// ─── DASHBOARD ───
+function renderDashboard() {
+  const container = document.getElementById('recentTrips');
+  const recent = state.trips.slice(0, 5);
+  container.innerHTML = recent.map(t => `
+    <div class="trip-item">
+      <div class="trip-dot ${t.status}"></div>
+      <div class="trip-info">
+        <div class="trip-route">${t.route} · ${t.from} → ${t.to}</div>
+        <div class="trip-time">${t.time}</div>
+      </div>
+      <div class="trip-fare" style="color:${t.status === 'success' ? 'var(--text)' : t.status === 'pending' ? 'var(--accent3)' : 'var(--red)'}">
+        ${t.status === 'failed' ? '—' : '₹'+t.fare}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── COUNTDOWN TIMER ───
+let seconds = 272;
+function updateCountdown() {
+  seconds--;
+  if(seconds < 0) seconds = 600;
+  const m = Math.floor(seconds/60);
+  const s = String(seconds%60).padStart(2,'0');
+  const el = document.getElementById('countdown');
+  if(el) el.textContent = m + ':' + s;
+}
+setInterval(updateCountdown, 1000);
+
+// ─── ROUTES ───
+function renderRoutes(routes) {
+  document.getElementById('routesGrid').innerHTML = routes.map(r => `
+    <div class="route-card">
+      <div class="route-status ${r.status}"></div>
+      <div class="route-number">${r.num}</div>
+      <div class="route-name">${r.name}</div>
+      <div class="route-path">${r.path}</div>
+      <div class="route-meta">
+        <span class="route-tag">${r.fare}</span>
+        <span class="route-tag green">⏱ ${r.freq}</span>
+        <span class="route-tag orange">📍 ${r.stops} stops</span>
+        ${r.ac ? '<span class="route-tag">❄️ AC</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+let allRoutes = [...state.routes];
+function filterRoutes(query) {
+  const q = query.toLowerCase();
+  const filtered = state.routes.filter(r =>
+    r.num.toLowerCase().includes(q) ||
+    r.name.toLowerCase().includes(q) ||
+    r.path.toLowerCase().includes(q)
+  );
+  renderRoutes(filtered);
+}
+function filterByStatus(status) {
+  const filtered = status ? state.routes.filter(r => r.status === status) : state.routes;
+  renderRoutes(filtered);
+}
+
+// ─── HISTORY ───
+function renderHistory(trips) {
+  document.getElementById('historyBody').innerHTML = trips.map(t => `
+    <tr>
+      <td style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">${t.id}</td>
+      <td style="font-weight:600;color:var(--accent)">${t.route}</td>
+      <td>${t.from} → ${t.to}</td>
+      <td style="color:var(--muted)">${t.time}</td>
+      <td style="font-family:'Space Mono',monospace;font-weight:700">${t.status === 'failed' ? '—' : '₹'+t.fare}</td>
+      <td><span class="status-badge ${t.status}">${t.status.charAt(0).toUpperCase()+t.status.slice(1)}</span></td>
+    </tr>
+  `).join('');
+}
+
+function filterHistory(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = filter === 'all' ? state.trips : state.trips.filter(t => t.status === filter);
+  renderHistory(filtered);
+}
+
+// ─── TOP UP ───
+function selectAmount(amt, btn) {
+  document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.selectedAmount = amt;
+  document.getElementById('selectedAmount').textContent = '₹' + amt;
+  document.getElementById('customAmount').value = '';
+}
+function updateCustom(val) {
+  document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+  state.selectedAmount = parseInt(val) || 0;
+  document.getElementById('selectedAmount').textContent = '₹' + (state.selectedAmount || 0);
+}
+function selectPayment(el, method) {
+  document.querySelectorAll('.payment-method').forEach(m => {
+    m.classList.remove('selected');
+    m.querySelector('input').checked = false;
+  });
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+}
+function processTopup() {
+  if(!state.selectedAmount || state.selectedAmount <= 0) {
+    showToast('Please select or enter an amount','error'); return;
+  }
+  state.balance += state.selectedAmount;
+  document.getElementById('dashBalance').textContent = '₹' + state.balance.toFixed(2);
+  showToast(`✅ ₹${state.selectedAmount} added to your pass!`, 'success');
+  state.selectedAmount = 0;
+  document.getElementById('selectedAmount').textContent = '₹0';
+  document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+}
+
+// ─── MODAL ───
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+function confirmTopup() {
+  const amt = parseInt(document.getElementById('modalAmount').value);
+  if(!amt || amt <= 0) { showToast('Enter a valid amount','error'); return; }
+  state.balance += amt;
+  document.getElementById('dashBalance').textContent = '₹' + state.balance.toFixed(2);
+  showToast(`✅ ₹${amt} added successfully!`, 'success');
+  closeModal('topupModal');
+  document.getElementById('modalAmount').value = '';
+}
+document.getElementById('topupModal').addEventListener('click', function(e) {
+  if(e.target === this) closeModal('topupModal');
+});
+
+// ─── TOAST ───
+function showToast(msg, type = 'info') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-text">${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ─── PASS SELECTION ───
+function selectPass(el, type) {
+  document.querySelectorAll('.pass-option').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  showToast(`${type.charAt(0).toUpperCase()+type.slice(1)} pass selected`, 'success');
+}
+
+// ─── TOGGLE ───
+function toggleSwitch(el) {
+  el.classList.toggle('active');
+  const dot = el.querySelector('div');
+  if(el.classList.contains('active')) {
+    el.style.background = 'var(--accent)';
+    dot.style.left = 'auto'; dot.style.right = '3px';
+  } else {
+    el.style.background = 'var(--muted)';
+    dot.style.right = 'auto'; dot.style.left = '3px';
+  }
+}
+
+// ─── INIT ───
+renderDashboard();
+renderRoutes(state.routes);
+renderHistory(state.trips);
+
+// ════════════════════════════════════════
+//  AUTH LOGIC
+// ════════════════════════════════════════
+
+let regData = { passType:'Monthly', passPrice:699 };
+let otpResendInterval = null;
+
+// ── Tab switcher ──────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  if (tab === 'login') {
+    document.getElementById('tabLogin').classList.add('active');
+    document.getElementById('formLogin').classList.add('active');
+  } else {
+    document.getElementById('tabRegister').classList.add('active');
+    document.getElementById('formRegister').classList.add('active');
+    resetRegSteps();
+  }
+}
+
+function showForgot() {
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  document.getElementById('formForgot').classList.add('active');
+}
+
+// ── Login ─────────────────────────────────
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showToast('Please fill in all fields','error'); return; }
+  if (!email.includes('@')) { showToast('Enter a valid email address','error'); return; }
+
+  // Simulate login (replace with real API call)
+  const btn = event.target;
+  btn.textContent = '⏳ Signing in...';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = 'Sign In →';
+    btn.disabled = false;
+    enterApp();
+    showToast('Welcome back, Arjun! 👋','success');
+  }, 1200);
+}
+
+// ── Register steps ────────────────────────
+function resetRegSteps() {
+  ['regStep1','regStep2','regStep3','regStepOtp','regStepSuccess'].forEach((id,i) => {
+    document.getElementById(id).style.display = i===0 ? 'block' : 'none';
+  });
+  updateStepDots(1);
+}
+
+function nextRegStep(step) {
+  if (step === 2) {
+    const fn = document.getElementById('regFirstName').value.trim();
+    const ln = document.getElementById('regLastName').value.trim();
+    const em = document.getElementById('regEmail').value.trim();
+    const ph = document.getElementById('regPhone').value.trim();
+    if (!fn||!ln) { showToast('Enter your full name','error'); return; }
+    if (!em.includes('@')) { showToast('Enter a valid email','error'); return; }
+    if (ph.length < 10) { showToast('Enter a valid phone number','error'); return; }
+  }
+  if (step === 1) {
+    showStep('regStep1'); updateStepDots(1); return;
+  }
+  if (step === 2) {
+    showStep('regStep2'); updateStepDots(2); return;
+  }
+  if (step === 3) {
+    const pwd  = document.getElementById('regPassword').value;
+    const cpwd = document.getElementById('regConfirmPassword').value;
+    const pin  = document.getElementById('regPin').value;
+    if (pwd.length < 6) { showToast('Password must be at least 6 characters','error'); return; }
+    if (pwd !== cpwd)   { showToast('Passwords do not match','error'); return; }
+    if (pin.length !== 6){ showToast('PIN must be exactly 6 digits','error'); return; }
+    showStep('regStep3'); updateStepDots(3); return;
+  }
+}
+
+function showStep(id) {
+  ['regStep1','regStep2','regStep3','regStepOtp','regStepSuccess'].forEach(s =>
+    document.getElementById(s).style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+}
+
+function updateStepDots(active) {
+  for(let i=1;i<=3;i++){
+    const d = document.getElementById('sDot'+i);
+    d.classList.remove('active','done');
+    if (i < active)  d.classList.add('done'), d.textContent='✓';
+    if (i === active) d.classList.add('active'), d.textContent=i;
+    if (i > active)  d.textContent=i;
+  }
+  for(let i=1;i<=2;i++){
+    document.getElementById('sLine'+i).classList.toggle('done', i < active);
+  }
+}
+
+// ── Pass selection in registration ────────
+function selectRegPass(el, type, price) {
+  document.querySelectorAll('#regStep3 .pass-option').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  regData.passType  = type;
+  regData.passPrice = price;
+}
+
+// ── OTP flow ──────────────────────────────
+function sendOtp() {
+  if (!document.getElementById('regTerms').checked) {
+    showToast('Please accept the Terms & Privacy Policy','error'); return;
+  }
+  const phone = document.getElementById('regPhone').value.trim();
+  document.getElementById('otpSubtitle').textContent = `OTP sent to ${phone}`;
+  showStep('regStepOtp');
+  startResendTimer();
+  showToast('OTP sent! Use 1 2 3 4 5 6 to verify (demo)','info');
+  // Auto-fill demo OTP
+  setTimeout(()=>{
+    ['otp1','otp2','otp3','otp4','otp5','otp6'].forEach((id,i)=>
+      document.getElementById(id).value = i+1
+    );
+  }, 600);
+}
+
+function backToStep3() {
+  showStep('regStep3');
+  updateStepDots(3);
+  clearInterval(otpResendInterval);
+}
+
+function startResendTimer() {
+  let t = 30;
+  const btn = document.getElementById('resendBtn');
+  const timer = document.getElementById('resendTimer');
+  btn.disabled = true;
+  clearInterval(otpResendInterval);
+  otpResendInterval = setInterval(()=>{
+    t--;
+    timer.textContent = t;
+    if(t <= 0){
+      clearInterval(otpResendInterval);
+      btn.disabled = false;
+      btn.textContent = 'Resend OTP';
+    }
+  }, 1000);
+}
+
+function resendOtp() {
+  document.getElementById('resendBtn').textContent = 'Resend in <span id="resendTimer">30</span>s';
+  startResendTimer();
+  showToast('OTP resent!','info');
+}
+
+function otpMove(el, prevId, nextId) {
+  el.value = el.value.replace(/\D/g,'');
+  if (el.value && nextId) document.getElementById(nextId).focus();
+}
+function otpBack(e, prevId, curId) {
+  if (e.key === 'Backspace' && !document.getElementById(curId).value && prevId)
+    document.getElementById(prevId).focus();
+}
+
+function verifyOtp() {
+  const otp = ['otp1','otp2','otp3','otp4','otp5','otp6'].map(id=>document.getElementById(id).value).join('');
+  if (otp.length < 6) { showToast('Enter complete 6-digit OTP','error'); return; }
+  clearInterval(otpResendInterval);
+
+  const btn = event.target;
+  btn.textContent = '⏳ Verifying...';
+  btn.disabled = true;
+
+  setTimeout(()=>{
+    btn.textContent = '✅ Verify & Create Account';
+    btn.disabled = false;
+    // Generate pass number
+    const passNum = Array.from({length:4},()=>String(Math.floor(1000+Math.random()*9000))).join('-');
+    document.getElementById('newPassNumber').textContent = passNum;
+    showStep('regStepSuccess');
+    // Update dots — all done
+    for(let i=1;i<=3;i++){
+      const d = document.getElementById('sDot'+i);
+      d.classList.remove('active'); d.classList.add('done'); d.textContent='✓';
+    }
+    document.getElementById('sLine1').classList.add('done');
+    document.getElementById('sLine2').classList.add('done');
+    showToast('🎉 Account created successfully!','success');
+  }, 1500);
+}
+
+// ── Forgot password ───────────────────────
+function sendReset() {
+  const em = document.getElementById('forgotEmail').value.trim();
+  if (!em.includes('@')) { showToast('Enter a valid email','error'); return; }
+  showToast(`Reset link sent to ${em}`,'success');
+  setTimeout(()=>switchTab('login'), 1500);
+}
+
+// ── Password strength checker ─────────────
+function checkStrength(val) {
+  const segs  = ['seg1','seg2','seg3','seg4'];
+  const colors = ['var(--red)','var(--accent3)','#60a5fa','var(--green)'];
+  const labels = ['Too weak','Could be stronger','Almost there!','Strong password 💪'];
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  segs.forEach((id,i) => {
+    document.getElementById(id).style.background = i < score ? colors[score-1] : 'var(--card2)';
+  });
+  document.getElementById('strengthLabel').textContent = val ? labels[score-1] ?? labels[3] : 'Enter a password';
+  document.getElementById('strengthLabel').style.color = val ? colors[score-1] : 'var(--muted)';
+}
+
+// ── Toggle password visibility ────────────
+function togglePass(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  const isHidden = inp.type === 'password';
+  inp.type = isHidden ? 'text' : 'password';
+  btn.textContent = isHidden ? '🙈' : '👁️';
+}
+
+// ── Social login ──────────────────────────
+function socialLogin(provider) {
+  showToast(`${provider} login — coming soon!`, 'info');
+}
+
+// ── Enter main app ────────────────────────
+function enterApp() {
+  const screen = document.getElementById('authScreen');
+  screen.classList.add('hide');
+  setTimeout(()=>{ screen.style.display='none'; }, 500);
+}
+</script>
+</body>
+</html>
+
+
