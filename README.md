@@ -3,7 +3,7 @@ eTransit – Smart Bus Pass App is a digital solution for managing bus passes th
 
 link - http://127.0.0.1:5500/index.html
 
-Key Features
+Key Features:
 1. Digital Bus Pass -
 Users can create and store their bus pass digitally in the app, reducing the need for physical passes.
 2. Online Pass Renewal -
